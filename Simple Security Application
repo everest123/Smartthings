@@ -1,0 +1,85 @@
+/**
+ *  Simple Security
+ *
+ *  Copyright 2014 Jeff Lunglhofer
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ */
+definition(
+    name: "Simple Security Application",
+    namespace: "everest123",
+    author: "Jeff Lunglhofer",
+    description: "A simple security application to provide a notification and trigger siren(s) if an intruder is detected.",
+    category: "Safety & Security",
+    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
+    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
+    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+
+
+preferences {
+	section("When motion is detected...") {
+		input "motion", "capability.motionSensor", title: "Which Motion Sensor(s)?", multiple: true, required: false
+	}
+    
+    section("Or these doors/windows are opened...") {
+		input "contact", "capability.contactSensor", title: "Which Contact Sensors(s)", multiple: true, required: false
+	}
+    
+	section("Set off which alarm?") {
+		input "alarm1", "capability.switch", title: "Which Alarm(s)", multiple: true, required: False
+	}
+    
+    section("Send Push Noficiation?") {
+    	input "pushoption", "enum", title: "Send a Push notification?", required: false, options: ["Yes","No"]
+    }
+        
+	section("Send SMS Notification?"){
+		input "smsnotify", "enum", title: "Send a SMS notification?", required: false, options: ["Yes","No"]
+		input "phone1", "phone", title: "Phone Number?", required: false
+	}
+  
+}
+
+def installed() {
+	log.debug "Installed with settings: ${settings}"
+    unsubscribe()
+	initialize()
+}
+
+def updated() {
+	log.debug "Updated with settings: ${settings}"
+    unsubscribe()
+	initialize()
+}
+
+def initialize() {
+    unsubscribe()
+	subscribe(motion, "motion.active", SecurityEvent)
+	subscribe(contact, "contact.open", SecurityEvent)
+}
+
+def SecurityEvent(evt) {
+	log.debug "Intruder Detected!! $evt.value"
+        alarm1.on() 
+		SendNotification(evt)
+}
+
+def SendNotification(evt) {
+  	if (pushoption) {
+        log.debug "INTRUDER DETECTED: Sending push notification"
+		sendPush("INTRUDER ALERT!!!")
+	}
+  
+   	if (smsnotify) {
+		log.debug "INTRUDER DETECTED: texting $phone1"
+		sendSms(phone1, "INTRUDER ALERT!!")
+	}
+}
